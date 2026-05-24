@@ -112,20 +112,6 @@ public/assets, frontend, db-data) persist across the rebuild.
 - SELinux: named volumes (the default) sidestep label issues. If you
   switch to bind mounts, add `:Z` to each mount.
 
-## Manual QA checklist
-
-1. Fresh install completes wizard → admin login at `/admin` works.
-2. Install a theme via admin UI → restart container (`minestore restart`)
-   → theme is still active.
-3. Upload logo via admin UI → restart → logo still present.
-4. PayNow webhook simulation succeeds.
-5. Create a second instance on the same VPS → both run isolated.
-6. `minestore update <name>` preserves db, `.env`, uploads, theme.
-7. `minestore backup <name>` then `minestore restore <name> --from <file>`
-   round-trips the entire state.
-8. Caddy / Nginx / Apache proxy generation each results in HTTPS access.
-9. Rerun the above on a Podman host (Fedora 40+ or RHEL 9).
-
 ## Troubleshooting
 
 - **App is unhealthy** — `minestore logs <name>` (default service is `app`).
