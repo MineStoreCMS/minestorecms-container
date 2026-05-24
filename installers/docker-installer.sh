@@ -16,7 +16,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$SCRIPT_DIR/lib/ui.sh"
 
 MINESTORE_ROOT="${MINESTORE_ROOT:-/opt/minestore}"
-MINESTORE_REPO="${MINESTORE_REPO:-$SCRIPT_DIR/../..}"
+MINESTORE_REPO="${MINESTORE_REPO:-$SCRIPT_DIR/..}"
 
 # ─── CLI arg parsing ─────────────────────────────────────────────────────
 MODE="install"
@@ -60,7 +60,15 @@ detect_environment() {
 
     if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
         RUNTIME="Docker $(docker --version | awk '{print $3}' | tr -d ,)"
-        COMPOSE_CMD=(docker compose)
+        if docker compose version >/dev/null 2>&1; then
+            COMPOSE_CMD=(docker compose)
+        elif command -v docker-compose >/dev/null 2>&1; then
+            COMPOSE_CMD=(docker-compose)
+        else
+            ui::fail "Docker is installed but neither 'docker compose' (V2) nor 'docker-compose' (V1) is available."
+            ui::bullet "Install Docker Compose V2: https://docs.docker.com/compose/install/linux/"
+            exit 2
+        fi
     elif command -v podman >/dev/null 2>&1; then
         RUNTIME="Podman $(podman --version | awk '{print $3}')"
         if podman compose --version >/dev/null 2>&1; then

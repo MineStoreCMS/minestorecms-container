@@ -6,10 +6,13 @@ alongside the bare-metal `docs/installer.sh`.
 ## Quick start
 
 ```bash
-# Fresh VPS bootstrap (one-liner)
+# Fresh VPS bootstrap (one-liner) — clones the container repo and runs the installer:
 curl -sSL https://minestorecms.com/docker-installer.sh | sudo bash
-# Or, if you cloned this repo:
-sudo bash docker/installers/docker-installer.sh
+
+# Or, if you cloned the container repo yourself:
+#   git clone https://github.com/MineStoreCMS/minestorecms-container.git
+#   cd minestorecms-container
+sudo bash installers/docker-installer.sh
 ```
 
 The installer asks for: instance name, license key, domain, reverse-proxy

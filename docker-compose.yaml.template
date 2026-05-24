@@ -6,7 +6,7 @@ services:
   app:
     build:
       context: ${REPO_PATH:-.}
-      dockerfile: docker/Dockerfile
+      dockerfile: Dockerfile
       args:
         LICENSE_KEY: ${LICENSE_KEY}
     container_name: minestore-${INSTANCE_NAME}-app

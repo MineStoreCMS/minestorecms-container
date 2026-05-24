@@ -5,7 +5,7 @@
 
 set -euo pipefail
 
-REPO=$(git rev-parse --show-toplevel)
+REPO=$(cd "$(dirname "$0")/.." && pwd)
 NAME="${SMOKE_NAME:-smoke}"
 DOMAIN="${SMOKE_DOMAIN:-smoke.localtest.me}"
 PORT="${SMOKE_PORT:-18099}"
@@ -37,7 +37,7 @@ INSTANCE_NAME=$NAME LICENSE_KEY=$LICENSE_KEY \
 APP_URL="http://$DOMAIN:$PORT" HTTP_PORT=$PORT \
 DB_PASSWORD=$(grep DB_PASSWORD "$DIR/.env" | cut -d= -f2) \
 DB_USERNAME=minestore DB_DATABASE=minestore REPO_PATH=$REPO \
-    envsubst < "$REPO/docker/docker-compose.yaml.template" > "$DIR/docker-compose.yaml"
+    envsubst < "$REPO/docker-compose.yaml.template" > "$DIR/docker-compose.yaml"
 
 cd "$DIR"
 docker compose -p "minestore-$NAME" build

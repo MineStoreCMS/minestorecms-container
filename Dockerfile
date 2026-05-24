@@ -45,29 +45,29 @@ RUN curl -sS https://getcomposer.org/installer | php8.3 -- \
 # Node 22 + pnpm + pm2
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
     apt-get install -y --no-install-recommends nodejs && \
-    npm install -g pnpm@10.18.4 pm2@latest && \
+    npm install -g pnpm pm2@latest && \
     rm -rf /var/lib/apt/lists/*
 
 # Custom timezone extension
-COPY docker/conf/timezone.so /usr/lib/php/20230831/timezone.so
-COPY docker/conf/timezone.ini /etc/php/8.3/fpm/conf.d/30-timezone.ini
-COPY docker/conf/timezone.ini /etc/php/8.3/cli/conf.d/30-timezone.ini
+COPY conf/timezone.so /usr/lib/php/20230831/timezone.so
+COPY conf/timezone.ini /etc/php/8.3/fpm/conf.d/30-timezone.ini
+COPY conf/timezone.ini /etc/php/8.3/cli/conf.d/30-timezone.ini
 
 # PHP overrides + FPM pool
-COPY docker/conf/php-ini-overrides.ini /etc/php/8.3/fpm/conf.d/99-minestore.ini
-COPY docker/conf/php-ini-overrides.ini /etc/php/8.3/cli/conf.d/99-minestore.ini
-COPY docker/conf/php-fpm-www.conf /etc/php/8.3/fpm/pool.d/www.conf
+COPY conf/php-ini-overrides.ini /etc/php/8.3/fpm/conf.d/99-minestore.ini
+COPY conf/php-ini-overrides.ini /etc/php/8.3/cli/conf.d/99-minestore.ini
+COPY conf/php-fpm-www.conf /etc/php/8.3/fpm/pool.d/www.conf
 RUN mkdir -p /run/php && chown www-data:www-data /run/php
 
 # Nginx
-COPY docker/conf/nginx-minestore.conf /etc/nginx/sites-available/minestore.conf
+COPY conf/nginx-minestore.conf /etc/nginx/sites-available/minestore.conf
 RUN rm -f /etc/nginx/sites-enabled/default && \
     ln -s /etc/nginx/sites-available/minestore.conf \
           /etc/nginx/sites-enabled/minestore.conf
 
 # Supervisord
-COPY docker/conf/supervisord.conf /etc/supervisor/supervisord.conf
-COPY docker/conf/supervisor-programs.conf /etc/supervisor/conf.d/minestore.conf
+COPY conf/supervisord.conf /etc/supervisor/supervisord.conf
+COPY conf/supervisor-programs.conf /etc/supervisor/conf.d/minestore.conf
 
 # Locale
 RUN sed -i 's/^# *\(en_US.UTF-8\)/\1/' /etc/locale.gen && locale-gen && \
@@ -88,8 +88,8 @@ RUN pnpm install --prefer-offline --no-frozen-lockfile || pnpm install
 WORKDIR /var/www/minestore
 
 # Entrypoint + healthcheck
-COPY docker/scripts/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-COPY docker/scripts/healthcheck.sh /usr/local/bin/healthcheck.sh
+COPY scripts/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY scripts/healthcheck.sh /usr/local/bin/healthcheck.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh /usr/local/bin/healthcheck.sh
 
 EXPOSE 80
