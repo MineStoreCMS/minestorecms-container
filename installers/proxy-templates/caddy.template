@@ -1,0 +1,13 @@
+${APP_DOMAIN} {
+    encode gzip
+    reverse_proxy 127.0.0.1:${HTTP_PORT} {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+    request_body { max_size 64MB }
+    log {
+        output file /var/log/caddy/minestore-${INSTANCE_NAME}.log
+    }
+}

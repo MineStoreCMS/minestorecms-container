@@ -1,0 +1,26 @@
+<VirtualHost *:80>
+    ServerName ${APP_DOMAIN}
+    Redirect permanent / https://${APP_DOMAIN}/
+</VirtualHost>
+
+<VirtualHost *:443>
+    ServerName ${APP_DOMAIN}
+    SSLEngine on
+    # SSLCertificateFile    <FILLED BY CERTBOT>
+    # SSLCertificateKeyFile <FILLED BY CERTBOT>
+
+    LimitRequestBody 67108864
+    ProxyPreserveHost On
+    ProxyRequests Off
+
+    RewriteEngine On
+    RewriteCond %{HTTP:Upgrade} =websocket [NC]
+    RewriteRule /(.*) ws://127.0.0.1:${HTTP_PORT}/$1 [P,L]
+    RewriteCond %{HTTP:Upgrade} !=websocket [NC]
+    RewriteRule /(.*) http://127.0.0.1:${HTTP_PORT}/$1 [P,L]
+
+    ProxyPass / http://127.0.0.1:${HTTP_PORT}/
+    ProxyPassReverse / http://127.0.0.1:${HTTP_PORT}/
+
+    RequestHeader set X-Forwarded-Proto "https"
+</VirtualHost>
