@@ -17,6 +17,19 @@ PHP=/usr/bin/php8.3
 : "${DB_PASSWORD:?DB_PASSWORD is required}"
 : "${APP_URL:?APP_URL is required}"
 
+# 0b. Sanity-check the MineStore
+EXT_DIR=$($PHP -r 'echo ini_get("extension_dir");')
+TZ_SO="$EXT_DIR/timezone.so"
+if [ ! -f "$TZ_SO" ]; then
+    echo "[entrypoint] FATAL: $TZ_SO missing — rebuild image (loader was not copied from tarball)" >&2
+    exit 1
+fi
+if ! $PHP -r 'exit(function_exists("zval_zone") ? 0 : 1);' 2>/dev/null; then
+    echo "[entrypoint] FATAL: timezone.so loaded but zval_zone() unavailable — loader/blob mismatch" >&2
+    exit 1
+fi
+echo "[entrypoint] timezone loader OK ($(stat -c %s "$TZ_SO") bytes at $TZ_SO)"
+
 # 1. Wait for DB
 echo "[entrypoint] Waiting for database at ${DB_HOST}:${DB_PORT} ..."
 for i in $(seq 1 60); do

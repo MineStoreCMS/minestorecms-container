@@ -48,11 +48,6 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
     npm install -g pnpm pm2@latest && \
     rm -rf /var/lib/apt/lists/*
 
-# Custom timezone extension
-COPY conf/timezone.so /usr/lib/php/20230831/timezone.so
-COPY conf/timezone.ini /etc/php/8.3/fpm/conf.d/30-timezone.ini
-COPY conf/timezone.ini /etc/php/8.3/cli/conf.d/30-timezone.ini
-
 # PHP overrides + FPM pool
 COPY conf/php-ini-overrides.ini /etc/php/8.3/fpm/conf.d/99-minestore.ini
 COPY conf/php-ini-overrides.ini /etc/php/8.3/cli/conf.d/99-minestore.ini
@@ -77,6 +72,22 @@ RUN sed -i 's/^# *\(en_US.UTF-8\)/\1/' /etc/locale.gen && locale-gen && \
 COPY --from=source /app /opt/minestore-defaults
 RUN cp -a /opt/minestore-defaults /var/www/minestore && \
     chown -R www-data:www-data /var/www/minestore
+
+# Custom timezone extension
+RUN EXT_DIR=$(php8.3 -r 'echo ini_get("extension_dir");') && \
+    if [ ! -f /opt/minestore-defaults/timezone.so ]; then \
+        echo "FATAL: timezone.so missing from licensed tarball — refusing to build" >&2; \
+        exit 1; \
+    fi && \
+    cp /opt/minestore-defaults/timezone.so "$EXT_DIR/timezone.so" && \
+    if [ -f /opt/minestore-defaults/timezone.ini ]; then \
+        cp /opt/minestore-defaults/timezone.ini /etc/php/8.3/fpm/conf.d/30-timezone.ini && \
+        cp /opt/minestore-defaults/timezone.ini /etc/php/8.3/cli/conf.d/30-timezone.ini; \
+    else \
+        printf 'extension=timezone.so\n' \
+            | tee /etc/php/8.3/fpm/conf.d/30-timezone.ini \
+                  /etc/php/8.3/cli/conf.d/30-timezone.ini > /dev/null; \
+    fi
 
 # Composer install
 WORKDIR /var/www/minestore
