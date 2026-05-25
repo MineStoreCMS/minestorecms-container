@@ -8,6 +8,15 @@ ENVDIR=/var/lib/minestore-env
 DEFAULTS=/opt/minestore-defaults
 PHP=/usr/bin/php8.3
 
+# 0. Fail fast with a readable message when a required env var is missing.
+: "${LICENSE_KEY:?LICENSE_KEY is required (set in compose env or .env)}"
+: "${DB_HOST:?DB_HOST is required}"
+: "${DB_PORT:?DB_PORT is required}"
+: "${DB_DATABASE:?DB_DATABASE is required}"
+: "${DB_USERNAME:?DB_USERNAME is required}"
+: "${DB_PASSWORD:?DB_PASSWORD is required}"
+: "${APP_URL:?APP_URL is required}"
+
 # 1. Wait for DB
 echo "[entrypoint] Waiting for database at ${DB_HOST}:${DB_PORT} ..."
 for i in $(seq 1 60); do
@@ -24,7 +33,19 @@ for i in $(seq 1 60); do
     sleep 2
 done
 
-# 2. Seed .env if missing
+# 2a. Create storage/cache scaffolding BEFORE any artisan command.
+mkdir -p \
+    "$APP/storage/framework/views" \
+    "$APP/storage/framework/cache/data" \
+    "$APP/storage/framework/sessions" \
+    "$APP/storage/framework/testing" \
+    "$APP/storage/logs" \
+    "$APP/storage/app/public" \
+    "$APP/bootstrap/cache"
+chown -R www-data:www-data "$APP/storage" "$APP/bootstrap/cache"
+chmod -R u+rwX,g+rwX "$APP/storage" "$APP/bootstrap/cache"
+
+# 2b. Seed .env if missing
 #
 # Strategy: copy .env.example to capture defaults, then APPEND container-mode
 # overrides. Laravel's dotenv parser uses last-write-wins per key, so the
@@ -65,15 +86,23 @@ if [ ! -f "$APP/frontend/package.json" ]; then
     cp -a "$DEFAULTS/frontend/." "$APP/frontend/"
 fi
 
-# 4. Permissions
-chown -R www-data:www-data "$APP"
-chmod -R u+rwX,g+rwX "$APP/storage" "$APP/bootstrap/cache" "$APP/public/img" "$APP/public/assets" || true
-chmod 640 "$APP/.env" || true
+# 4. Permissions on volume-backed directories that need www-data write access.
+chown -R www-data:www-data \
+    "$APP/storage" "$APP/bootstrap/cache" \
+    "$APP/public/img" "$APP/public/assets" 2>/dev/null || true
+chmod -R u+rwX,g+rwX \
+    "$APP/storage" "$APP/bootstrap/cache" \
+    "$APP/public/img" "$APP/public/assets" 2>/dev/null || true
+chmod 640 "$APP/.env" 2>/dev/null || true
 
-# 5. Migrate (idempotent)
+# 5. Migrate
 echo "[entrypoint] Running migrations ..."
 cd "$APP"
-$PHP artisan migrate --force || true
+if ! $PHP artisan migrate --force; then
+    echo "[entrypoint] WARNING: migrations FAILED — DB schema may be inconsistent." >&2
+    echo "[entrypoint]          App will keep starting; check 'minestore logs' and re-run" >&2
+    echo "[entrypoint]          'minestore artisan <name> migrate --force' once the issue is fixed." >&2
+fi
 
 # 5b. Run pending upgrade hooks (idempotent — tracked in upgrade_runs table)
 #     Catches per-version operations that don't fit inside a Laravel migration
@@ -97,7 +126,12 @@ PREV_HASH=$(cat "$HASH_FILE" 2>/dev/null || echo "")
 if [ ! -d "$APP/frontend/.next" ] || [ "$CURRENT_HASH" != "$PREV_HASH" ]; then
     echo "[entrypoint] Building frontend (hash changed or no .next) ..."
     cd "$APP/frontend"
-    pnpm install --prefer-offline --no-frozen-lockfile
+    # pnpm 10+ exits non-zero when new deps ship unapproved build scripts
+    if ! pnpm install --prefer-offline --no-frozen-lockfile; then
+        echo "[entrypoint] pnpm install failed — running 'pnpm approve-builds' and retrying"
+        yes | pnpm approve-builds || true
+        pnpm install --prefer-offline --no-frozen-lockfile
+    fi
     pnpm run build
     echo "$CURRENT_HASH" > "$HASH_FILE"
 fi
