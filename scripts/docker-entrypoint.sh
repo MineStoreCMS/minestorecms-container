@@ -149,6 +149,15 @@ if [ ! -d "$APP/frontend/.next" ] || [ "$CURRENT_HASH" != "$PREV_HASH" ]; then
     echo "$CURRENT_HASH" > "$HASH_FILE"
 fi
 
-# 8. Hand off to supervisord
+# 8. Export SERVER_NAME for CLI workers (queue/cron/discord/scheduler).
+SERVER_NAME=$(printf '%s' "$APP_URL" | sed -E 's,^[a-zA-Z]+://([^/:]+).*,\1,')
+if [ -z "$SERVER_NAME" ] || [ "$SERVER_NAME" = "$APP_URL" ]; then
+    echo "[entrypoint] FATAL: could not extract hostname from APP_URL='$APP_URL'" >&2
+    exit 1
+fi
+export SERVER_NAME
+echo "[entrypoint] SERVER_NAME='$SERVER_NAME' (from APP_URL)"
+
+# 9. Hand off to supervisord
 echo "[entrypoint] Starting supervisord ..."
 exec /usr/bin/supervisord -c /etc/supervisor/supervisord.conf
