@@ -7,7 +7,7 @@
 #
 # Optional env:
 #   MINESTORE_ROOT=/opt/minestore   (where instances live)
-#   MINESTORE_REPO=/srv/minestore-src (path to repo with the Dockerfile)
+#   MINESTORE_REPO=/srv/minestore-src (path to repo root — must contain docker/ and sidecar/)
 
 set -euo pipefail
 
@@ -16,7 +16,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$SCRIPT_DIR/lib/ui.sh"
 
 MINESTORE_ROOT="${MINESTORE_ROOT:-/opt/minestore}"
-MINESTORE_REPO="${MINESTORE_REPO:-$SCRIPT_DIR/..}"
+MINESTORE_REPO="${MINESTORE_REPO:-$SCRIPT_DIR/../..}"
 
 # ─── CLI arg parsing ─────────────────────────────────────────────────────
 MODE="install"
@@ -289,7 +289,7 @@ render_files() {
     mkdir -p "$dir"
 
     local db_pass
-    db_pass=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32)
+    db_pass=$(set +o pipefail; LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32)
     cat > "$dir/.env" <<EOF
 INSTANCE_NAME=$INSTANCE_NAME
 LICENSE_KEY=$LICENSE_KEY
